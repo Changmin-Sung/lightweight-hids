@@ -1,9 +1,11 @@
 import time
+import argparse
 from monitor import get_system_usage
 from detector import detect_suspicious_process
 from network import detect_suspicious_connections
 from logger import log
 import config
+from collections import defaultdict
 
 
 def calculate_risk(alerts):
@@ -27,7 +29,36 @@ def get_risk_level(score):
         return "LOW"
 
 
+def analyze_logs():
+    try:
+        with open("hids.log", "r") as f:
+            lines = f.readlines()
+
+        stats = defaultdict(int)
+
+        for line in lines:
+            if "Suspicious Process" in line:
+                proc = line.split("]")[-1].strip()
+                stats[proc] += 1
+
+        print("\n=== LOG ANALYSIS ===")
+        for k, v in stats.items():
+            print(f"{k}: {v} times")
+
+    except FileNotFoundError:
+        print("\nNo log data available.")
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--interval", type=int, default=config.CHECK_INTERVAL)
+    parser.add_argument("--analyze", action="store_true")
+    args = parser.parse_args()
+
+    if args.analyze:
+        analyze_logs()
+        return
+
     print("HIDS started...\n")
 
     while True:
@@ -61,7 +92,7 @@ def main():
         print(f"Risk Level: {risk_level} ({risk_score}/10)")
         print(f"Total Alerts: {len(alerts)}")
 
-        time.sleep(config.CHECK_INTERVAL)
+        time.sleep(args.interval)
 
 
 if __name__ == "__main__":
